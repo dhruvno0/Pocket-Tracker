@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Add Transaction - Pocket Tracker{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow">
+            <div class="card-header">
+                <h4 class="card-title mb-0">
+                    <i class="bi bi-plus-circle"></i> Add New Transaction
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="transactionForm">
+                    <!-- Transaction Type -->
+                    <div class="mb-3">
+                        <label class="form-label">Transaction Type</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="type" id="income" value="income" required>
+                            <label class="btn btn-outline-success" for="income">
+                                <i class="bi bi-arrow-up-circle"></i> Income
+                            </label>
+                            
+                            <input type="radio" class="btn-check" name="type" id="expense" value="expense" required>
+                            <label class="btn btn-outline-danger" for="expense">
+                                <i class="bi bi-arrow-down-circle"></i> Expense
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Amount -->
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">Amount (₹)</label>
+                        <input type="number" class="form-control" id="amount" name="amount" 
+                               step="0.01" min="0.01" required>
+                    </div>
+
+                    <!-- Category -->
+                    <div class="mb-3">
+                        <label for="category_id" class="form-label">Category</label>
+                        <select class="form-select" id="category_id" name="category_id" required>
+                            <option value="">Select Category</option>
+                            {% for category in categories %}
+                                <option value="{{ category.id }}">{{ category.icon }} {{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Payment Mode -->
+                    <div class="mb-3">
+                        <label for="payment_mode" class="form-label">Payment Mode</label>
+                        <select class="form-select" id="payment_mode" name="payment_mode" required>
+                            <option value="">Select Payment Mode</option>
+                            <option value="Cash">💵 Cash</option>
+                            <option value="UPI">📱 UPI</option>
+                            <option value="Card">💳 Card</option>
+                            <option value="Bank Transfer">🏦 Bank Transfer</option>
+                            <option value="Other">📦 Other</option>
+                        </select>
+                    </div>
+
+                    <!-- Date -->
+                    <div class="mb-3">
+                        <label for="transaction_date" class="form-label">Date</label>
+                        <input type="date" class="form-control" id="transaction_date" 
+                               name="transaction_date" value="{{ today }}" required>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description (Optional)</label>
+                        <textarea class="form-control" id="description" name="description" 
+                                  rows="3" placeholder="Add a note about this transaction..."></textarea>
+                    </div>
+
+                    <!-- Submit Buttons -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Add Transaction
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Quick Add Buttons -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-lightning"></i> Quick Add Common Expenses
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-6 col-md-3">
+                        <button type="button" class="btn btn-outline-primary btn-sm w-100 quick-add" 
+                                data-type="expense" data-category="Food" data-payment="UPI">
+                            🍽️ Food
+                        </button>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <button type="button" class="btn btn-outline-primary btn-sm w-100 quick-add" 
+                                data-type="expense" data-category="Travel" data-payment="UPI">
+                            🚗 Travel
+                        </button>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <button type="button" class="btn btn-outline-primary btn-sm w-100 quick-add" 
+                                data-type="expense" data-category="Shopping" data-payment="Card">
+                            🛒 Shopping
+                        </button>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <button type="button" class="btn btn-outline-success btn-sm w-100 quick-add" 
+                                data-type="income" data-category="Salary" data-payment="Bank Transfer">
+                            💼 Salary
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Set today's date as default
+document.getElementById('transaction_date').value = new Date().toISOString().split('T')[0];
+
+// Quick add functionality
+document.querySelectorAll('.quick-add').forEach(button => {
+    button.addEventListener('click', function() {
+        const type = this.dataset.type;
+        const categoryName = this.dataset.category;
+        const paymentMode = this.dataset.payment;
+        
+        // Set transaction type
+        document.getElementById(type).checked = true;
+        
+        // Set category
+        const categorySelect = document.getElementById('category_id');
+        for (let option of categorySelect.options) {
+            if (option.text.includes(categoryName)) {
+                option.selected = true;
+                break;
+            }
+        }
+        
+        // Set payment mode
+        const paymentSelect = document.getElementById('payment_mode');
+        for (let option of paymentSelect.options) {
+            if (option.text.includes(paymentMode)) {
+                option.selected = true;
+                break;
+            }
+        }
+        
+        // Focus on amount field
+        document.getElementById('amount').focus();
+    });
+});
+
+// Form validation
+document.getElementById('transactionForm').addEventListener('submit', function(e) {
+    const amount = parseFloat(document.getElementById('amount').value);
+    
+    if (amount <= 0) {
+        e.preventDefault();
+        alert('Please enter a valid amount greater than 0');
+        return false;
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Budgets - Pocket Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-piggy-bank"></i> Budget Management</h2>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Set Category Budgets</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="category_id" class="form-label">Category</label>
+                            <select class="form-select" id="category_id" name="category_id" required>
+                                <option value="">Select Category</option>
+                                {% for category in categories %}
+                                    <option value="{{ category.id }}">{{ category.icon }} {{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="monthly_limit" class="form-label">Monthly Limit (₹)</label>
+                            <input type="number" class="form-control" id="monthly_limit" 
+                                   name="monthly_limit" step="0.01" min="0.01" required>
+                        </div>
+                        <div class="col-md-2 mb-3">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-check-circle"></i> Set
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Current Budgets -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Current Budgets</h5>
+            </div>
+            <div class="card-body">
+                {% if budgets %}
+                    <div class="row">
+                        {% for category in categories %}
+                            {% if category.id in budgets %}
+                                {% set budget = budgets[category.id] %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="card border">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <h6 class="mb-0">{{ category.icon }} {{ category.name }}</h6>
+                                                <span class="badge bg-primary">₹{{ "%.0f"|format(budget.monthly_limit) }}</span>
+                                            </div>
+                                            {% set spent = budget.current_spending|float or 0 %}
+                                            {% set percentage = (spent / budget.monthly_limit|float * 100) if budget.monthly_limit > 0 else 0 %}
+                                            <div class="progress mb-2" style="height: 8px;">
+                                                <div class="progress-bar {{ 'bg-danger' if percentage > 90 else 'bg-warning' if percentage > 75 else 'bg-success' }}" 
+                                                     role="progressbar" style="width: {{ percentage }}%"></div>
+                                            </div>
+                                            <small class="text-muted">
+                                                ₹{{ "%.0f"|format(spent) }} of ₹{{ "%.0f"|format(budget.monthly_limit) }} spent
+                                                {% if percentage > 100 %}
+                                                    <span class="text-danger fw-bold">({{ "%.0f"|format(percentage - 100) }}% over budget!)</span>
+                                                {% elif percentage > 75 %}
+                                                    <span class="text-warning">({{ "%.0f"|format(percentage) }}% used)</span>
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-piggy-bank fs-1 text-muted"></i>
+                        <p class="text-muted mt-2">No budgets set yet. Set your first budget above!</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Budget Tips -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-lightbulb"></i> Budget Tips
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-start mb-3">
+                    <i class="bi bi-check-circle text-success me-2 mt-1"></i>
+                    <small>Set realistic budgets based on your income</small>
+                </div>
+                <div class="d-flex align-items-start mb-3">
+                    <i class="bi bi-check-circle text-success me-2 mt-1"></i>
+                    <small>Follow the 50/30/20 rule: 50% needs, 30% wants, 20% savings</small>
+                </div>
+                <div class="d-flex align-items-start mb-3">
+                    <i class="bi bi-check-circle text-success me-2 mt-1"></i>
+                    <small>Review and adjust budgets monthly</small>
+                </div>
+                <div class="d-flex align-items-start mb-3">
+                    <i class="bi bi-check-circle text-success me-2 mt-1"></i>
+                    <small>Track expenses regularly to stay within limits</small>
+                </div>
+                <div class="d-flex align-items-start">
+                    <i class="bi bi-check-circle text-success me-2 mt-1"></i>
+                    <small>Set aside emergency funds before discretionary spending</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Budget Categories Guide -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-info-circle"></i> Recommended Budget %
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>🏠 Rent/Housing</span>
+                    <span class="text-muted">25-30%</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>🍽️ Food</span>
+                    <span class="text-muted">10-15%</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>🚗 Transportation</span>
+                    <span class="text-muted">10-15%</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>🎬 Entertainment</span>
+                    <span class="text-muted">5-10%</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>🛒 Shopping</span>
+                    <span class="text-muted">5-10%</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>💰 Savings</span>
+                    <span class="text-success fw-bold">20%+</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}

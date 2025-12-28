@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics - Pocket Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-graph-up"></i> Analytics & Reports</h2>
+    <div class="btn-group" role="group">
+        <button type="button" class="btn btn-outline-primary active" onclick="showMonthlyView()">Monthly</button>
+        <button type="button" class="btn btn-outline-primary" onclick="showYearlyView()">Yearly</button>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h6>Current Month</h6>
+                <h4>{{ current_month }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h6>Income</h6>
+                <h4>₹{{ "%.0f"|format(summary.income) }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body text-center">
+                <h6>Expenses</h6>
+                <h4>₹{{ "%.0f"|format(summary.expense) }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-{{ 'success' if summary.balance >= 0 else 'warning' }} text-white">
+            <div class="card-body text-center">
+                <h6>Savings</h6>
+                <h4>₹{{ "%.0f"|format(summary.balance) }}</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Monthly Trend Chart -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-graph-up"></i> Income vs Expenses Trend
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="trendChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Breakdown -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-pie-chart"></i> Category Breakdown
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if category_expenses %}
+                    <canvas id="categoryChart" height="300"></canvas>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-pie-chart fs-1 text-muted"></i>
+                        <p class="text-muted mt-2">No expenses this month</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Category Analysis -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-bar-chart"></i> Category-wise Spending Analysis
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if category_expenses %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th class="text-end">Amount</th>
+                                    <th class="text-end">Percentage</th>
+                                    <th>Spending Pattern</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set total_expense = category_expenses|map(attribute='total')|sum|float %}
+                                {% for category in category_expenses %}
+                                    {% set percentage = (category.total|float / total_expense * 100) if total_expense > 0 else 0 %}
+                                    <tr>
+                                        <td>
+                                            <span class="me-2">{{ category.icon }}</span>
+                                            {{ category.name }}
+                                        </td>
+                                        <td class="text-end fw-bold">₹{{ "%.2f"|format(category.total) }}</td>
+                                        <td class="text-end">{{ "%.1f"|format(percentage) }}%</td>
+                                        <td>
+                                            <div class="progress" style="height: 20px;">
+                                                <div class="progress-bar bg-{{ 'danger' if percentage > 30 else 'warning' if percentage > 20 else 'success' }}" 
+                                                     role="progressbar" style="width: {{ percentage }}%">
+                                                    {{ "%.0f"|format(percentage) }}%
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-bar-chart fs-1 text-muted"></i>
+                        <p class="text-muted mt-2">No expense data available for analysis</p>
+                        <a href="{{ url_for('main.add_transaction') }}" class="btn btn-primary">
+                            Add First Expense
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Financial Health Score -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-heart-pulse"></i> Financial Health Score
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                {% set savings_rate = (summary.balance|float / summary.income|float * 100) if summary.income > 0 else 0 %}
+                {% set health_score = 85 if savings_rate > 20 else 70 if savings_rate > 10 else 50 if savings_rate > 0 else 30 %}
+                
+                <div class="mb-3">
+                    <div class="progress mx-auto" style="width: 200px; height: 20px;">
+                        <div class="progress-bar bg-{{ 'success' if health_score > 70 else 'warning' if health_score > 50 else 'danger' }}" 
+                             role="progressbar" style="width: {{ health_score }}%">
+                            {{ health_score }}%
+                        </div>
+                    </div>
+                </div>
+                
+                <h4 class="text-{{ 'success' if health_score > 70 else 'warning' if health_score > 50 else 'danger' }}">
+                    {{ 'Excellent' if health_score > 80 else 'Good' if health_score > 60 else 'Fair' if health_score > 40 else 'Poor' }}
+                </h4>
+                
+                <p class="text-muted">
+                    {% if savings_rate > 20 %}
+                        Great job! You're saving {{ "%.1f"|format(savings_rate) }}% of your income.
+                    {% elif savings_rate > 10 %}
+                        Good savings rate of {{ "%.1f"|format(savings_rate) }}%. Try to reach 20%.
+                    {% elif savings_rate > 0 %}
+                        You're saving {{ "%.1f"|format(savings_rate) }}%. Aim for at least 10%.
+                    {% else %}
+                        Consider reducing expenses to start saving money.
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-trophy"></i> Monthly Goals
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>Save 20% of income</span>
+                    <span class="badge bg-{{ 'success' if savings_rate >= 20 else 'warning' }}">
+                        {{ "✓" if savings_rate >= 20 else "%.0f"|format(savings_rate) + "%" }}
+                    </span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>Track all expenses</span>
+                    <span class="badge bg-success">✓</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>Stay within budgets</span>
+                    <span class="badge bg-warning">Monitor</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>Review spending weekly</span>
+                    <span class="badge bg-info">Ongoing</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Monthly Trend Chart
+const trendData = {
+    labels: [{% for trend in monthly_trends %}'{{ trend.month }}'{{ ',' if not loop.last }}{% endfor %}],
+    datasets: [{
+        label: 'Income',
+        data: [{% for trend in monthly_trends %}{{ trend.income }}{{ ',' if not loop.last }}{% endfor %}],
+        borderColor: '#28a745',
+        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+        tension: 0.4
+    }, {
+        label: 'Expenses',
+        data: [{% for trend in monthly_trends %}{{ trend.expense }}{{ ',' if not loop.last }}{% endfor %}],
+        borderColor: '#dc3545',
+        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+        tension: 0.4
+    }]
+};
+
+const trendChart = new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: trendData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'top'
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return '₹' + value.toLocaleString();
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Category Chart
+{% if category_expenses %}
+const categoryData = {
+    labels: [{% for cat in category_expenses %}'{{ cat.name }}'{{ ',' if not loop.last }}{% endfor %}],
+    datasets: [{
+        data: [{% for cat in category_expenses %}{{ cat.total }}{{ ',' if not loop.last }}{% endfor %}],
+        backgroundColor: [
+            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
+            '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
+        ]
+    }]
+};
+
+const categoryChart = new Chart(document.getElementById('categoryChart'), {
+    type: 'doughnut',
+    data: categoryData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+{% endif %}
+
+function showMonthlyView() {
+    // Switch to monthly view (current implementation)
+    document.querySelector('.btn-group .active').classList.remove('active');
+    event.target.classList.add('active');
+}
+
+function showYearlyView() {
+    // Switch to yearly view (placeholder for future implementation)
+    document.querySelector('.btn-group .active').classList.remove('active');
+    event.target.classList.add('active');
+    alert('Yearly view coming soon!');
+}
+</script>
+{% endblock %}
